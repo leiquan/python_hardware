@@ -12,21 +12,6 @@
 
 7.要想启动后自动运行，必须把文件名设置为main.py，必须带后缀
 
-8.以上是python语言实现
-
--------------
-
-9.以下为js 实现，使用Kaluma.js
-
-10.下载uf2 文件，https://kalumajs.org/download/
-
-11.使用bootselect模式安装
-
-12.npm install -g @kaluma/cli
-
-13.kaluma flash index.js
-
-失败嘞
 
 -------------
 nRF52840 的xiao，也可以使用micor python 来运行。。。。。已刷
