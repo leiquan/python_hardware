@@ -1,4 +1,4 @@
-1.使用官方推荐的thonny或者vs code；
+1.使用官方推荐的thonny或者vs code；可以直接从thonny install 或者从官网下载uf2
 
 2.安装扩展：Pico-W-Go；
 
@@ -11,3 +11,22 @@
 6.如果要使用自定义的函数库，需要上传到zero上去，可以使用thonny或者底栏的all commands 进行upload；比如这个dht.py库文件，dht11就需要引用他，必须上传到板子上
 
 7.要想启动后自动运行，必须把文件名设置为main.py，必须带后缀
+
+8.以上是python语言实现
+
+-------------
+
+9.以下为js 实现，使用Kaluma.js
+
+10.下载uf2 文件，https://kalumajs.org/download/
+
+11.使用bootselect模式安装
+
+12.npm install -g @kaluma/cli
+
+13.kaluma flash index.js
+
+失败嘞
+
+-------------
+nRF52840 的xiao，也可以使用micor python 来运行。。。。。已刷

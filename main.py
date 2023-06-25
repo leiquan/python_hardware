@@ -2,7 +2,7 @@ import time
 from machine import Pin
 import rp2
 
-max_lum =100
+max_lum =1000000
 r=0
 g=0
 b=0
