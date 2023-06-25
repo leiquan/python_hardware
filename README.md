@@ -14,4 +14,8 @@
 
 
 -------------
-nRF52840 的xiao，也可以使用micor python 来运行。。。。。已刷
+nRF52840 的xiao，也可以使用Circuit Python 来运行。。。。。已刷，然后可以直接使用mu editor来开发
+
+
+-------
+mu editor 比较友好，可以直接开发circuitpython的 xiao，也可以开发zero（pico）。因此使用这个。也能支持多窗口，比arduino靠谱。唯一的坏处是，circuit的不能直接run。也不能上传文件到zero？【实验证明，不需要上传文件，貌似import会自动引用进去，智能】
