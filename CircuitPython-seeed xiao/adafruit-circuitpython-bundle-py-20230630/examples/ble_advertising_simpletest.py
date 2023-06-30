@@ -16,7 +16,7 @@ advertisement.connectable = True
 
 while True:
     print(advertisement)
-    ble.start_advertising(advertisement, scan_response=b"")
+    ble.start_advertising(advertisement, scan_response=None)
     while not ble.connected:
         pass
     print("connected")
