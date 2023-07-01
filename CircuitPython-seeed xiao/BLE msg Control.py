@@ -11,13 +11,23 @@ uart = UARTService()
 advertisement = ProvideServicesAdvertisement(uart)
 
 while True:
+    
     ble.start_advertising(advertisement)
+    
     while not ble.connected:
         pass
+        
     while ble.connected:
-        one_byte = uart.read(1)
-        if one_byte:
-            print(one_byte)
-            uart.write(one_byte)
+        
+        con = ble.connections[0]
+        
+        print(con)
+        
+        ble.stop_advertising()
+        
+        msg = uart.read()
+        if msg:
+            print(msg)
+            uart.write(msg)
         else:
             print('no msg')
