@@ -25,7 +25,7 @@ lcd = I2cLcd(i2c, i2c_addr, 2, 16)
 lcd.putstr('measuring...')
 
 while True:
-    time.sleep(10)
+    time.sleep(3)
     pin = machine.Pin(29, machine.Pin.OUT, machine.Pin.PULL_DOWN)
     sensor = DHT11(pin)
     
