@@ -15,6 +15,9 @@ from adafruit_ble.characteristics.stream import StreamIn, StreamOut
 from adafruit_ble.advertising import Advertisement
 from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
 
+
+print("--- 串口连接测试开始 ---")
+
 # Keep disabled during USB/REPL development: watchdog expiry enters CircuitPython
 # safe mode, which deliberately skips main.py. Enable only with an explicit policy.
 ENABLE_WATCHDOG = False
