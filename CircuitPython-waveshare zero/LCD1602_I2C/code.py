@@ -75,11 +75,11 @@ try:
     while True:
         lcd.clear()
         lcd.message("RP2040-Zero\nHello CircuitPy!")
-        time.sleep(4)
+        time.sleep(1)
 
         lcd.clear()
-        lcd.message("Line 1 Test\nLine 2 Test")
-        time.sleep(4)
+        lcd.message("Line 0 Test\nLine 1 Test")
+        time.sleep(1)
 
 except Exception as e:
     print(f"Error starting LCD: {e}")
