@@ -4,6 +4,9 @@ import time
 import board
 import digitalio
 
+
+print("--- 串口连接测试开始 ---")
+
 BLINK_INTERVAL = 0.5  # 亮或灭各保持的时间（秒）
 
 

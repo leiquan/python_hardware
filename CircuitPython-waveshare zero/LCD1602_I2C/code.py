@@ -3,6 +3,8 @@ import board
 import busio
 from adafruit_bus_device.i2c_device import I2CDevice
 
+print("--- 串口连接测试开始 ---")
+
 # --- Standalone PCF8574 1602 LCD Driver ---
 class PCF8574_LCD:
     def __init__(self, i2c, address=0x27):
