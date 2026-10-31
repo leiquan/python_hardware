@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var ble = BLEManager()
+    @State private var throttle = 0.0
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         NavigationStack {
             Form {
@@ -30,6 +32,24 @@ struct ContentView: View {
                             .disabled(ble.active)
                     }
                 }
+                Section("ESC 协议原型 · 仅模拟") {
+                    Text("模式：\(ble.controlMode) · 状态：\(ble.controlState)")
+                    Text("板端油门：\(ble.actualThrottle) / 1000")
+                    Text("每次手动发送只维持 1.5 秒；无自动续期。未适配真实电调。")
+                        .font(.caption)
+                    Slider(value: $throttle, in: 0...1000, step: 1)
+                    Text("待发送：\(Int(throttle)) / 1000")
+                    Button("零油门解锁 ARM") { throttle = 0; ble.control("ARM", throttle: 0) }
+                        .disabled(!ble.ready || ble.busy || ble.controlMode != "simulation" || ble.controlState != "DISARMED")
+                    Button("发送油门 / 续期") { ble.control("SET_THROTTLE", throttle: Int(throttle)) }
+                        .disabled(!ble.ready || ble.busy || ble.controlMode != "simulation" || ble.controlState != "ARMED")
+                    Button("停机 DISARM") { throttle = 0; ble.control("DISARM") }
+                        .disabled(!ble.ready || ble.busy)
+                    Button("紧急停机 ESTOP", role: .destructive) { throttle = 0; ble.control("ESTOP") }
+                        .disabled(!ble.ready)
+                    Button("清除急停（仍保持未解锁）") { throttle = 0; ble.control("RESET_ESTOP") }
+                        .disabled(!ble.ready || ble.busy || ble.controlState != "ESTOP")
+                }
                 Section("发送文本") {
                     TextEditor(text: $ble.text).frame(minHeight: 100)
                     Text("\(ble.text.utf8.count) / 512 UTF-8 字节").font(.caption)
@@ -41,6 +61,9 @@ struct ContentView: View {
                         Text(message).font(.system(.body, design: .monospaced)).textSelection(.enabled)
                     }
                 }
+            }
+            .onChange(of: scenePhase) { phase in
+                if phase != .active { throttle = 0; ble.disconnect() }
             }
             .navigationTitle("XIAO 蓝牙文本")
         }
