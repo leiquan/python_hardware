@@ -7,6 +7,11 @@ final class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     static let serviceID = CBUUID(string: "A8E00001-9D4B-4F2A-A8A6-6C33F8D11E01")
     static let rxID = CBUUID(string: "A8E00002-9D4B-4F2A-A8A6-6C33F8D11E01")
     static let txID = CBUUID(string: "A8E00003-9D4B-4F2A-A8A6-6C33F8D11E01")
+    @Published var controlState = "未知"
+    @Published var controlMode = "未确认"
+    @Published var actualThrottle = 0
+    private var controlSession: String?
+    private var controlPoll: Timer?
     @Published var text = "你好 XIAO!"
     @Published var bluetoothStatus = "蓝牙：初始化中"
     @Published var status = "正在初始化蓝牙"
@@ -54,6 +59,8 @@ final class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: item)
     }
     private func clearSession() {
+        controlPoll?.invalidate(); controlPoll = nil
+        controlSession = nil; controlState = "未知"; controlMode = "未确认"; actualThrottle = 0
         deadline?.cancel(); deadline = nil
         connectedName = nil
         ready = false; busy = false
@@ -209,19 +216,47 @@ final class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         devices.removeAll()
         discoveredIDs.removeAll()
         status = "已连接，可以发送"
+        control("STATUS")
+        controlPoll = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            guard let self = self, self.ready, !self.busy else { return }
+            self.control("STATUS")
+        }
     }
     func send(_ text: String) {
         guard ready, !busy, text.utf8.count <= 512 else { return }
+        transmit(["text": text])
+    }
+    // No automatic throttle heartbeat: each explicit send grants only a 1.5 s lease.
+    func control(_ command: String, throttle: Int? = nil) {
+        guard ready else { return }
+        if command == "ESTOP", busy {
+            // Cannot interleave JSON frames. Drop link; board's finally/lease stops output.
+            fail("急停：传输忙，已请求断开；等待板端停机确认后重新连接")
+            return
+        }
+        guard !busy else { return }
+        var object: [String: Any] = ["v": 1, "cmd": command]
+        if command != "STATUS" && command != "ESTOP" && command != "DISARM" {
+            guard let session = controlSession else { return }
+            object["session"] = session
+        }
+        if let throttle = throttle { object["throttle"] = throttle }
+        transmit(object)
+    }
+    private func transmit(_ object: [String: Any]) {
+        guard ready, !busy else { return }
         nextID += 1
-        guard let data = try? JSONSerialization.data(withJSONObject: ["id": nextID, "text": text]) else { return }
+        var object = object
+        object["id"] = nextID
+        guard let data = try? JSONSerialization.data(withJSONObject: object) else { return }
         var wire = data; wire.append(10)
         guard let peer = peer else { return }
         let size = min(20, peer.maximumWriteValueLength(for: .withResponse))
         guard size > 0 else { fail("无法确定写入长度"); return }
         chunks = stride(from: 0, to: wire.count, by: size).map { wire.subdata(in: $0..<min($0 + size, wire.count)) }
         incoming.removeAll(); pendingID = nextID; busy = true
-        log("发送：\(text)")
-        timeout(30) { [weak self] in self?.fail("回传超时，本次消息结果未知；请重连后手动重试") }
+        log("发送：\(object)")
+        timeout(object["cmd"] == nil ? 30 : 3) { [weak self] in self?.fail("回传超时，已请求断开；重连查询状态后再操作") }
         writeNext()
     }
     private func writeNext() {
@@ -248,7 +283,13 @@ final class BLEManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
                 log("忽略不匹配的回传"); continue
             }
             guard let ok = object["ok"] as? Bool else { fail("回传缺少 ok 字段"); return }
-            if ok, let result = object["result"] as? String {
+            if let control = object["control"] as? [String: Any] {
+                controlSession = control["session"] as? String
+                controlState = control["state"] as? String ?? "未知"
+                controlMode = control["mode"] as? String ?? "未知"
+                actualThrottle = control["throttle"] as? Int ?? 0
+                if !ok { log("控制错误：\(object["error"] ?? "未知")") }
+            } else if ok, let result = object["result"] as? String {
                 log("回传：\(result)\n接收字节：\(object["bytes"] ?? "?")")
             } else { log("XIAO 错误：\(object["error"] ?? "缺少 result")") }
             deadline?.cancel(); pendingID = nil; busy = false; chunks = []

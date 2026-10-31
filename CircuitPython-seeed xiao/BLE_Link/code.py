@@ -3,7 +3,9 @@
 CircuitPython 10.x, adafruit_ble. Set ENABLE_WATCHDOG=False before REPL debugging:
 nRF's hardware watchdog cannot be stopped after it has been enabled.
 """
+import os
 import gc
+from esc_protocol import Controller, SimulatedESC
 import json
 import time
 import microcontroller
@@ -42,25 +44,11 @@ def process_text(text):
     return "来自 Xiao 开发板：" + text
 
 
+controller = None
+
+
 def response_for(frame):
-    """Only validate/process the message here; transport exceptions stay outside."""
-    request_id = None
-    try:
-        request = json.loads(frame.decode("utf-8"))
-        if not isinstance(request, dict):
-            raise ValueError("Expected JSON object")
-        request_id = request.get("id")
-        text = request.get("text")
-        if not isinstance(request_id, int) or not isinstance(text, str):
-            raise ValueError("Expected integer id and string text")
-        size = len(text.encode("utf-8"))
-        if size > 512:
-            raise ValueError("Text exceeds 512 UTF-8 bytes")
-        print("RX:", text)
-        result = process_text(text)
-        return {"id": request_id, "ok": True, "result": result, "bytes": size}
-    except (ValueError, UnicodeError, TypeError) as exc:
-        return {"id": request_id, "ok": False, "error": str(exc)}
+    return controller.frame(frame)
 
 
 def feed():
@@ -71,6 +59,8 @@ def feed():
 def pause(seconds):
     """Keep the watchdog alive during intentional waits, not blocked BLE calls."""
     feed()
+    if controller is not None:
+        controller.tick()
     time.sleep(seconds)
 
 
@@ -86,22 +76,36 @@ def reply(ble, service, obj):
     wire = (json.dumps(obj) + "\n").encode("utf-8")
     for start in range(0, len(wire), 20):
         feed()
+        controller.tick()
         if not ble.connected:
             # Abort the whole session; never continue an old reply on a new link.
             raise LinkLost("Disconnected during reply")
         service.tx.write(wire[start:start + 20])
         pause(0.015)
     if obj.get("ok"):
-        print("TX:", obj["result"])
+        print("TX:", obj.get("result", obj.get("control")))
 
 
 def serve(ble, service):
+    global controller
+    was_estop = controller is not None and controller.state == "ESTOP"
+    controller = Controller(SimulatedESC(), time.monotonic, os.urandom(16).hex())
+    if was_estop:
+        controller.stop("estop_latched", emergency=True)
+    try:
+        serve_session(ble, service)
+    finally:
+        controller.disconnect()
+
+
+def serve_session(ble, service):
     # These variables belong to one connection only.
     pending = bytearray()
     dropping = False
     last_byte = time.monotonic()
     while ble.connected:
         feed()
+        controller.tick()
         count = service.rx.in_waiting
         if count:
             data = service.rx.read(min(count, 128))
